@@ -47,14 +47,20 @@ jobs:
       - name: 設定 GitHub Pages (Configure Pages)
         uses: actions/configure-pages@v4
 
-      # 步驟三：打包 docs 目錄為 Pages 工件 (Artifact)
+      # 步驟三：建置 Jekyll 靜態網頁 (將 Markdown 說明文件編譯為 HTML 網頁)
+      - name: 建置 Jekyll 靜態網頁 (Build with Jekyll)
+        uses: actions/jekyll-build-pages@v1
+        with:
+          source: ./docs
+          destination: ./_site
+
+      # 步驟四：打包編譯後之靜態網頁產物
       - name: 打包文件產物 (Upload Pages Artifact)
         uses: actions/upload-pages-artifact@v3
         with:
-          # 指定發布的來源資料夾，此處為存放說明的 docs 目錄
-          path: './docs'
+          path: './_site'
 
-      # 步驟四：發布至 GitHub Pages 伺服器
+      # 步驟五：發布至 GitHub Pages 伺服器
       - name: 發布至 GitHub Pages (Deploy to Pages)
         id: deployment
         uses: actions/deploy-pages@v4
