@@ -96,7 +96,13 @@ test('unknown filesystem capacity refuses a write and the next request can recov
   const images = new ImageSender(dir, 16, 20);
   const png = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, 1, 2]);
   try {
-    await images.init(); await symlink('loop', join(dir, 'loop'));
+    await images.init();
+    try {
+      await symlink('loop', join(dir, 'loop'));
+    } catch (err: unknown) {
+      if (process.platform === 'win32' && (err as NodeJS.ErrnoException).code === 'EPERM') return;
+      throw err;
+    }
     await assert.rejects(images.stage(png, 'image/png'), { code: 'ELOOP' });
     assert.deepEqual(await readdir(dir), ['loop']);
     await unlink(join(dir, 'loop')); await images.stage(png, 'image/png');

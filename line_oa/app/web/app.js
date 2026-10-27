@@ -1,28 +1,65 @@
-let csrf='';
-let timezone;
-let lineLogoutBusy=false;
-let aliases={};
-let qrTimer;
-let qrPollBusy=false;
-let qrImageLoaded=false;
-let qrCompletionHandled=false;
-let sessionConnected=false;
-const $=id=>document.getElementById(id);
-const fmt=t=>t?new Date(t).toLocaleString('zh-TW',timezone?{timeZone:timezone,timeZoneName:'short'}:{timeZoneName:'short'}):'—';
+/**
+ * ============================================================================
+ * 模組名稱：app.js
+ * 模組用途：LINE OA Add-on Ingress Web UI 前端核心互動邏輯
+ * 
+ * 核心功能：
+ * 1. 管理後台會話驗證與 CSRF 權杖自動注入。
+ * 2. 閘道狀態、系統資源 (RSS 記憶體/運行時間) 與最後錯誤即時監控。
+ * 3. 聯絡人別名白名單管理 (新增、查詢、刪除、發送測試訊息)。
+ * 4. QR Code 登入輪詢、PIN 碼呈現與多官方帳號下拉選擇。
+ * 5. 操作日誌即時展示 (含展開除錯細節與敏感資料遮蔽)。
+ * ============================================================================
+ */
 
-function responseError(data,status){
-  const code=data.error_name||(typeof data.error==='string'?data.error:data.error?.code)||data.reason||`HTTP_${status}`;
-  return new Error([`${code}（HTTP ${status}${data.upstream_status?`；LINE HTTP ${data.upstream_status}`:''}）`,data.message,data.details].filter(Boolean).join('\n'));
+// 前端全域狀態變數
+let csrf = '';                     // 當前 Web UI 會話 CSRF Token
+let timezone;                      // 伺服器回傳之當地時區字串
+let lineLogoutBusy = false;        // 登出按鈕忙碌旗標
+let aliases = {};                  // 本地快取的別名字典
+let qrTimer;                       // QR Code 輪詢計時器
+let qrPollBusy = false;            // QR 輪詢執行中旗標
+let qrImageLoaded = false;         // QR 圖片是否已載入完成
+let qrCompletionHandled = false;   // 登入完成回呼是否已處理
+let sessionConnected = false;      // LINE Session 是否處於已連線正常狀態
+
+// DOM 元素選取捷徑
+const $ = id => document.getElementById(id);
+
+/**
+ * 將 ISO 時間字串轉換為繁體中文當地格式化時間
+ * @param {string|Date} t - 時間字串或 Date 物件
+ * @returns {string} 格式化後字串
+ */
+const fmt = t => t ? new Date(t).toLocaleString('zh-TW', timezone ? { timeZone: timezone, timeZoneName: 'short' } : { timeZoneName: 'short' }) : '—';
+
+/**
+ * 格式化 API 回傳之錯誤物件
+ * @param {Object} data - 回傳的 JSON 資料
+ * @param {number} status - HTTP 狀態碼
+ * @returns {Error}
+ */
+function responseError(data, status) {
+  const code = data.error_name || (typeof data.error === 'string' ? data.error : data.error?.code) || data.reason || `HTTP_${status}`;
+  return new Error([`${code}（HTTP ${status}${data.upstream_status ? `；LINE HTTP ${data.upstream_status}` : ''}）`, data.message, data.details].filter(Boolean).join('\n'));
 }
 
-async function api(path,options={}){
-  const headers={'Content-Type':'application/json',...(options.headers||{})};
-  if(csrf&&options.method&&options.method!=='GET')headers['X-CSRF-Token']=csrf;
-  const response=await fetch(path,{...options,headers});
-  const data=await response.json().catch(()=>({error:'INVALID_RESPONSE'}));
-  if(!response.ok)throw responseError(data,response.status);
+/**
+ * 通用非同步 API 請求封裝函式 (自動附加 CSRF Token)
+ * @param {string} path - API 路徑
+ * @param {Object} options - fetch 選項
+ * @returns {Promise<Object>} 回傳解析後的 JSON 物件
+ */
+async function api(path, options = {}) {
+  const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
+  // 非 GET 請求自動注入 X-CSRF-Token 標頭防禦跨站請求偽造
+  if (csrf && options.method && options.method !== 'GET') headers['X-CSRF-Token'] = csrf;
+  const response = await fetch(path, { ...options, headers });
+  const data = await response.json().catch(() => ({ error: 'INVALID_RESPONSE' }));
+  if (!response.ok) throw responseError(data, response.status);
   return data;
 }
+
 
 async function boot(){
   const state=await api('api/auth/session');
@@ -102,7 +139,13 @@ async function loadContacts(force=false){
   for(const c of data.list){
     const row=document.createElement('div');row.className='item';const text=document.createElement('div');const name=document.createElement('strong');name.textContent=c.name;
     const meta=document.createElement('small');meta.textContent=`${c.kind==='group'?'群組':'個人'} · ${c.chatId}`;text.append(name,document.createElement('br'),meta);
-    const button=document.createElement('button');button.textContent='設為別名';button.onclick=async()=>{const alias=prompt('輸入英數小寫別名（例如 home）');if(!alias)return;try{await api('api/aliases',{method:'PUT',body:JSON.stringify({alias,chatId:c.chatId})});await loadAliases()}catch(e){alert(e.message)}};
+    const button=document.createElement('button');button.textContent='設為別名';button.onclick=async()=>{
+      const raw=prompt('輸入英數小寫別名（例如 home）');if(raw===null)return;
+      const alias=raw.trim().toLowerCase();
+      if(!alias){alert('別名不可為空白！');return;}
+      if(!/^[a-z0-9_-]{1,32}$/.test(alias)){alert('別名格式不符規範！只能使用 1–32 字元的小寫英文字母 (a-z)、數字 (0-9)、底線 (_) 或連字號 (-)，不可包含空格或特殊符號。');return;}
+      try{await api('api/aliases',{method:'PUT',body:JSON.stringify({alias,chatId:c.chatId})});await loadAliases()}catch(e){alert(e.message)}
+    };
     row.append(text,button);list.append(row);
   }
 }

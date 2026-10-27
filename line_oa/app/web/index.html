@@ -1,22 +1,223 @@
 <!doctype html>
+<!-- 
+  ============================================================================
+  檔案名稱：index.html
+  檔案用途：LINE OA Add-on Home Assistant Ingress 管理後台主頁面
+  設計特點：
+  1. 無外部 CDN 依賴：完全內建 Vanilla HTML/CSS/JS，杜絕外網相依性與隱私洩漏。
+  2. 響應式卡片排版：自動適應 HA 手機 App 與桌面瀏覽器寬度。
+  3. 模組化分頁：
+     - Dashboard (總覽)：LINE 登入控制 (QR Code/PIN 碼)、服務健康狀態、RAM 指標。
+     - Contacts (聯絡人)：查詢 LINE 後台聊天對象、綁定收件者別名 (Alias)。
+     - Send (發送測試)：測試發送文字與單張圖片，提供 Home Assistant YAML 範例。
+     - Logs (紀錄)：即時操作日誌，支援展開遮蔽後的系統回應。
+     - Settings (設定)：閘道參數檢視、Supervisor 配對狀態與 API Key 輪替。
+  ============================================================================
+-->
 <html lang="zh-Hant">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>LINE OA Gateway</title><link rel="icon" type="image/png" href="icon.png"><link rel="stylesheet" href="style.css"></head>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LINE OA Gateway 管理後台</title>
+  <link rel="icon" type="image/png" href="icon.png">
+  <link rel="stylesheet" href="style.css">
+</head>
 <body>
 <main>
-  <header><div><h1>LINE OA 通知服務</h1></div><div id="sessionBadge" class="badge neutral" role="status">未連線</div></header>
-  <p class="notice" role="note"><strong>非官方介面提醒</strong>　本服務使用 LINE OA 管理後台的未公開通訊介面，可能因服務變更或帳號限制而失效。僅對已確認的測試收件者少量使用；遇到限制或不明結果時不會自動重送。</p>
-  <section id="loginPanel" class="card login"><h2>管理者登入</h2><p id="loginHint">請輸入管理者密碼。</p><form id="loginForm"><label>密碼<input id="password" type="password" minlength="12" autocomplete="current-password" required></label><button>登入</button></form><p id="loginError" class="error"></p></section>
+  <!-- 頁面標頭與即時連線狀態標籤 -->
+  <header>
+    <div>
+      <h1>LINE OA 通知服務</h1>
+    </div>
+    <div id="sessionBadge" class="badge neutral" role="status">未連線</div>
+  </header>
+
+  <!-- 非官方使用安全警示告示牌 -->
+  <p class="notice" role="note">
+    <strong>非官方介面提醒</strong>　本服務使用 LINE OA 管理後台的未公開通訊介面，可能因服務變更或帳號限制而失效。僅對已確認的測試收件者少量使用；遇到限制或不明結果時不會自動重送。
+  </p>
+
+  <!-- 管理者密碼登入面板 (僅在獨立部署且未開啟 Ingress 信任時顯示) -->
+  <section id="loginPanel" class="card login">
+    <h2>管理者登入</h2>
+    <p id="loginHint">請輸入管理者密碼。</p>
+    <form id="loginForm">
+      <label>
+        密碼
+        <input id="password" type="password" minlength="12" autocomplete="current-password" required>
+      </label>
+      <button>登入</button>
+    </form>
+    <p id="loginError" class="error"></p>
+  </section>
+
+  <!-- 主應用程式介面 (登入成功或 Ingress 模式下顯示) -->
   <div id="app" hidden>
-    <nav aria-label="主要導覽"><button data-tab="dashboard" class="active" aria-selected="true">總覽</button><button data-tab="contacts" aria-selected="false">聯絡人</button><button data-tab="send" aria-selected="false">發送測試</button><button data-tab="logs" aria-selected="false">紀錄</button><button data-tab="settings" aria-selected="false">設定</button><button id="logout" class="quiet">登出</button></nav>
-    <section id="dashboard" class="tab active"><article class="card"><h2>LINE 帳號</h2><p id="sessionReason" role="status">—</p><div class="row"><button id="validateSession">手動測試連線</button><button id="startQrLogin" class="secondary">登入／切換官方帳號</button><button id="logoutLine" class="secondary" hidden>登出 LINE</button><button id="cancelQrLogin" class="secondary" hidden>取消登入</button></div><div id="qrLoginBox" class="qr-login" hidden><div id="qrImageFrame" class="qr-frame" hidden><img id="qrImage" alt="LINE 官方登入行動條碼" width="180" height="180"></div><div><h3 id="qrLoginTitle">正在準備登入</h3><p id="qrLoginMessage" role="status" aria-live="polite">請稍候…</p><p id="qrPin" class="qr-pin" hidden></p><div id="qrChoices" class="login-choices" hidden></div><ol><li>手機 LINE 開啟「掃描行動條碼」。</li><li>掃描後依手機畫面確認登入。</li><li>若本頁顯示 PIN 或官方帳號清單，請核對後完成選擇。</li></ol></div></div></article>
-<div class="grid metrics">
-      <article class="card"><span>LINE 帳號</span><strong id="accountName">—</strong></article><article class="card"><span>聯絡人快取</span><strong id="cacheCount">0</strong></article><article class="card"><span>本次提交</span><strong id="submittedCount">0</strong></article><article class="card"><span>目前 RAM</span><strong id="rss">—</strong></article>
-    </div><article class="card"><h2>服務狀態</h2><dl><dt>啟動時間</dt><dd id="uptime">—</dd><dt>最後登入</dt><dd id="lastLogin">—</dd><dt>登入至今</dt><dd id="loginAge">—</dd><dt>最後驗證</dt><dd id="lastValidated">—</dd><dt>最後成功提交</dt><dd id="lastSubmitted">—</dd><dt>最近錯誤</dt><dd id="latestError">無</dd></dl></article></section>
-    <section id="contacts" class="tab"><article class="card"><h2>查詢通知對象</h2><p>請依下列步驟設定通知對象：</p><ol class="contact-help"><li>先在「總覽」完成 LINE 登入，按「手動測試連線」確認狀態為 CONNECTED。</li><li>第一次使用請按下方「重新整理」，從 LINE 載入最近的聊天聯絡人。需要找特定對象時，可輸入名稱再搜尋。</li><li>找到對象後按「設為別名」，設定 1–32 字元的小寫英文字母、數字、底線或連字號，例如 <code>home</code>。必須設定別名，才能發送通知。</li><li>確認對象出現在「允許的收件者別名」，再到「發送測試」選取別名測試。Home Assistant 的 <code>who</code> 也填入這個別名，例如 <code>home</code>。</li></ol><p class="note">找不到對象時，請先讓對方在 LINE 與此官方帳號聊天，再按「重新整理」。此處顯示後台聊天聯絡人，並非全部好友；名稱相同時請核對 Web Chat ID。</p><form id="searchForm" class="row"><input id="contactQuery" type="search" maxlength="100" placeholder="搜尋聯絡人名稱" aria-label="搜尋聯絡人名稱"><button>搜尋</button><button type="button" id="refreshContacts" class="secondary">重新整理</button></form><div id="contactList" class="list empty">尚未載入</div><hr><h3>允許的收件者別名</h3><div id="aliasList" class="list empty">尚未設定別名</div></article></section>
-    <section id="send" class="tab"><article class="card"><h2>發送測試</h2><form id="sendForm"><label>允許的收件者別名<select id="target" required></select></label><div id="targetInfo" class="target-info" hidden><h3>Home Assistant who</h3><p class="note">自動化只需使用下方別名；Web Chat ID 不必複製到 Home Assistant。</p><div class="row"><input id="targetAlias" type="text" readonly spellcheck="false"><button id="copyTarget" type="button" class="secondary">複製 who</button></div><pre id="targetYaml"></pre><p id="copyStatus" class="note" role="status" aria-live="polite"></p></div><label>文字訊息<textarea id="message" maxlength="5000" rows="6" placeholder="輸入通知內容" required></textarea></label><button id="sendButton">發送文字</button></form><p id="sendResult" role="status" aria-live="polite"></p><hr><h3>圖片訊息</h3><p class="note">支援單張 JPEG／PNG，最大 10 MiB。圖片只在發送期間暫存，完成或失敗後立即刪除；結果不明時不會自動重送。</p><form id="imageForm"><label>選擇圖片<input id="imageFile" type="file" accept="image/jpeg,image/png" required></label><button id="imageButton">發送圖片</button></form><p id="imageResult" role="status" aria-live="polite"></p></article></section>
-    <section id="logs" class="tab"><article class="card"><h2>最近操作</h2><p class="note">時間依 Home Assistant 時區顯示。失敗紀錄可展開完整系統回應；登入憑證會自動遮蔽。</p><button id="refreshLogs" class="secondary">重新整理紀錄</button><div id="logList" class="list"></div></article></section>
-    <section id="settings" class="tab"><article class="card"><h2>設定</h2><dl><dt>版本</dt><dd id="version">—</dd><dt>監聽</dt><dd id="listen">—</dd><dt>快取有效期</dt><dd id="cacheTtl">—</dd><dt>Home Assistant API</dt><dd id="apiEnabled">—</dd><dt>圖片發送</dt><dd id="imageEnabled">—</dd></dl><hr><h3>Home Assistant 配對</h3><dl><dt>API 配對狀態</dt><dd id="pairingState">—</dd><dt>HACS 連線狀態</dt><dd id="hacsState">—</dd><dt>Supervisor Discovery</dt><dd id="discoveryState">—</dd></dl><p class="note">到 Home Assistant「設定 → 裝置與服務」確認加入 LINE OA；不需要輸入 API Key。LINE 登入與 API 配對互相獨立。</p><button id="resetPairing" class="secondary">重新配對 Home Assistant／輪替憑證</button></article></section>
+    <!-- 頂部功能分頁導覽列 -->
+    <nav aria-label="主要導覽">
+      <button data-tab="dashboard" class="active" aria-selected="true">總覽</button>
+      <button data-tab="contacts" aria-selected="false">聯絡人</button>
+      <button data-tab="send" aria-selected="false">發送測試</button>
+      <button data-tab="logs" aria-selected="false">紀錄</button>
+      <button data-tab="settings" aria-selected="false">設定</button>
+      <button id="logout" class="quiet">登出</button>
+    </nav>
+
+    <!-- 分頁 1：總覽 (LINE 登入控制與服務狀態) -->
+    <section id="dashboard" class="tab active">
+      <article class="card">
+        <h2>LINE 帳號</h2>
+        <p id="sessionReason" role="status">—</p>
+        <div class="row">
+          <button id="validateSession">手動測試連線</button>
+          <button id="startQrLogin" class="secondary">登入／切換官方帳號</button>
+          <button id="logoutLine" class="secondary" hidden>登出 LINE</button>
+          <button id="cancelQrLogin" class="secondary" hidden>取消登入</button>
+        </div>
+        <!-- QR Code / PIN 碼即時掃描互動卡片 -->
+        <div id="qrLoginBox" class="qr-login" hidden>
+          <div id="qrImageFrame" class="qr-frame" hidden>
+            <img id="qrImage" alt="LINE 官方登入行動條碼" width="180" height="180">
+          </div>
+          <div>
+            <h3 id="qrLoginTitle">正在準備登入</h3>
+            <p id="qrLoginMessage" role="status" aria-live="polite">請稍候…</p>
+            <p id="qrPin" class="qr-pin" hidden></p>
+            <div id="qrChoices" class="login-choices" hidden></div>
+            <ol>
+              <li>手機 LINE 開啟「掃描行動條碼」。</li>
+              <li>掃描後依手機畫面確認登入。</li>
+              <li>若本頁顯示 PIN 或官方帳號清單，請核對後完成選擇。</li>
+            </ol>
+          </div>
+        </div>
+      </article>
+
+      <!-- 系統運行指標卡片網格 -->
+      <div class="grid metrics">
+        <article class="card"><span>LINE 帳號</span><strong id="accountName">—</strong></article>
+        <article class="card"><span>聯絡人快取</span><strong id="cacheCount">0</strong></article>
+        <article class="card"><span>本次提交</span><strong id="submittedCount">0</strong></article>
+        <article class="card"><span>目前 RAM</span><strong id="rss">—</strong></article>
+      </div>
+
+      <!-- 詳細服務狀態列表 -->
+      <article class="card">
+        <h2>服務狀態</h2>
+        <dl>
+          <dt>啟動時間</dt><dd id="uptime">—</dd>
+          <dt>最後登入</dt><dd id="lastLogin">—</dd>
+          <dt>登入至今</dt><dd id="loginAge">—</dd>
+          <dt>最後驗證</dt><dd id="lastValidated">—</dd>
+          <dt>最後成功提交</dt><dd id="lastSubmitted">—</dd>
+          <dt>最近錯誤</dt><dd id="latestError">無</dd>
+        </dl>
+      </article>
+    </section>
+
+    <!-- 分頁 2：聯絡人與別名管理 -->
+    <section id="contacts" class="tab">
+      <article class="card">
+        <h2>查詢通知對象</h2>
+        <p>請依下列步驟設定通知對象：</p>
+        <ol class="contact-help">
+          <li>先在「總覽」完成 LINE 登入，按「手動測試連線」確認狀態為 CONNECTED。</li>
+          <li>第一次使用請按下方「重新整理」，從 LINE 載入最近的聊天聯絡人。需要找特定對象時，可輸入名稱再搜尋。</li>
+          <li>找到對象後按「設為別名」，設定 1–32 字元的小寫英文字母、數字、底線或連字號，例如 <code>home</code>。必須設定別名，才能發送通知。</li>
+          <li>確認對象出現在「允許的收件者別名」，再到「發送測試」選取別名測試。Home Assistant 的 <code>who</code> 也填入這個別名，例如 <code>home</code>。</li>
+        </ol>
+        <p class="note">找不到對象時，請先讓對方在 LINE 與此官方帳號聊天，再按「重新整理」。此處顯示後台聊天聯絡人，並非全部好友；名稱相同時請核對 Web Chat ID。</p>
+        <form id="searchForm" class="row">
+          <input id="contactQuery" type="search" maxlength="100" placeholder="搜尋聯絡人名稱" aria-label="搜尋聯絡人名稱">
+          <button>搜尋</button>
+          <button type="button" id="refreshContacts" class="secondary">重新整理</button>
+        </form>
+        <div id="contactList" class="list empty">尚未載入</div>
+        <hr>
+        <h3>允許的收件者別名</h3>
+        <div id="aliasList" class="list empty">尚未設定別名</div>
+      </article>
+    </section>
+
+    <!-- 分頁 3：發送測試 (純文字與圖片) -->
+    <section id="send" class="tab">
+      <article class="card">
+        <h2>發送測試</h2>
+        <form id="sendForm">
+          <label>
+            允許的收件者別名
+            <select id="target" required></select>
+          </label>
+          <div id="targetInfo" class="target-info" hidden>
+            <h3>Home Assistant who 參數範例</h3>
+            <p class="note">自動化只需使用下方別名；Web Chat ID 不必複製到 Home Assistant。</p>
+            <div class="row">
+              <input id="targetAlias" type="text" readonly spellcheck="false">
+              <button id="copyTarget" type="button" class="secondary">複製 who</button>
+            </div>
+            <pre id="targetYaml"></pre>
+            <p id="copyStatus" class="note" role="status" aria-live="polite"></p>
+          </div>
+          <label>
+            文字訊息
+            <textarea id="message" maxlength="5000" rows="6" placeholder="輸入通知內容" required></textarea>
+          </label>
+          <button id="sendButton">發送文字</button>
+        </form>
+        <p id="sendResult" role="status" aria-live="polite"></p>
+        <hr>
+        <h3>圖片訊息</h3>
+        <p class="note">支援單張 JPEG／PNG，最大 10 MiB。圖片只在發送期間暫存，完成或失敗後立即刪除；結果不明時不會自動重送。</p>
+        <form id="imageForm">
+          <label>
+            選擇圖片
+            <input id="imageFile" type="file" accept="image/jpeg,image/png" required>
+          </label>
+          <button id="imageButton">發送圖片</button>
+        </form>
+        <p id="imageResult" role="status" aria-live="polite"></p>
+      </article>
+    </section>
+
+    <!-- 分頁 4：操作與系統日誌 -->
+    <section id="logs" class="tab">
+      <article class="card">
+        <h2>最近操作</h2>
+        <p class="note">時間依 Home Assistant 時區顯示。失敗紀錄可展開完整系統回應；登入憑證會自動遮蔽。</p>
+        <button id="refreshLogs" class="secondary">重新整理紀錄</button>
+        <div id="logList" class="list"></div>
+      </article>
+    </section>
+
+    <!-- 分頁 5：閘道設定與配對憑證管理 -->
+    <section id="settings" class="tab">
+      <article class="card">
+        <h2>設定</h2>
+        <dl>
+          <dt>版本</dt><dd id="version">—</dd>
+          <dt>監聽</dt><dd id="listen">—</dd>
+          <dt>快取有效期</dt><dd id="cacheTtl">—</dd>
+          <dt>Home Assistant API</dt><dd id="apiEnabled">—</dd>
+          <dt>圖片發送</dt><dd id="imageEnabled">—</dd>
+        </dl>
+        <hr>
+        <h3>Home Assistant 配對</h3>
+        <dl>
+          <dt>API 配對狀態</dt><dd id="pairingState">—</dd>
+          <dt>HACS 連線狀態</dt><dd id="hacsState">—</dd>
+          <dt>Supervisor Discovery</dt><dd id="discoveryState">—</dd>
+        </dl>
+        <p class="note">到 Home Assistant「設定 → 裝置與服務」確認加入 LINE OA；不需要輸入 API Key。LINE 登入與 API 配對互相獨立。</p>
+        <button id="resetPairing" class="secondary">重新配對 Home Assistant／輪替憑證</button>
+      </article>
+    </section>
   </div>
-  <footer>LINE OA Lightweight Gateway · <span id="footerVersion">—</span></footer>
-</main><script src="app.js" defer></script>
-</body></html>
+
+  <!-- 頁尾宣告與版本號 -->
+  <footer>
+    LINE OA Lightweight Gateway · <span id="footerVersion">—</span>
+  </footer>
+</main>
+<script src="app.js" defer></script>
+</body>
+</html>

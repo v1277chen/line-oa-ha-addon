@@ -105,7 +105,7 @@ test('background 401 recovers the same OA, persists privately, and survives rest
     assert.equal(h.sessions.getStatus().state, 'CONNECTED'); assert.equal(h.sessions.getStatus().loginRequiredReason, undefined);
     assert.equal(h.sessions.getCredentials(), original); assert.equal(original?.botId, botId); assert.equal(original?.importedAt, creds().importedAt);
     assert.equal(h.recoveries(), 1);
-    assert.equal((await stat(join(h.dir, 'secrets/line-session.json'))).mode & 0o777, 0o600);
+    if (process.platform !== 'win32') assert.equal((await stat(join(h.dir, 'secrets/line-session.json'))).mode & 0o777, 0o600);
     const restarted = new SessionManager(h.dir); await restarted.load();
     assert.equal(restarted.getCredentials()?.cookies.find(c => c.name === '__Host-chat-ses')?.value, 'fresh-chat');
     assert.ok(restarted.getCredentials()?.loginCookies?.some(c => c.name === '__Host-SID'));

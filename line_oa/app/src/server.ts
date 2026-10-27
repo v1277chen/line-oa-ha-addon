@@ -1,3 +1,23 @@
+/**
+ * ============================================================================
+ * 模組名稱：server.ts
+ * 模組用途：LINE OA Add-on 核心 HTTP 伺服器 (Gateway Server)
+ * 
+ * 路由與服務架構：
+ * 1. 對外提供 Home Assistant 整合的 HTTP API v1：
+ *    - GET  /api/v1/health             ：健康檢查端點
+ *    - GET  /api/v1/status             ：會話狀態端點 (Bearer API Key)
+ *    - GET  /api/v1/aliases            ：收件者別名清單端點 (Bearer API Key)
+ *    - POST /api/v1/messages/text      ：發送純文字訊息
+ *    - POST /api/v1/messages/image     ：發送圖片訊息 (multipart/form-data)
+ *    - POST /api/v1/pairing/exchange   ：一次性 Token 配對換鑰
+ * 2. 靜態資源與 Ingress Web UI 管理後台：
+ *    - GET  /                          ：管理後台 HTML 首頁
+ *    - GET  /style.css, /app.js        ：前端樣式與互動腳本
+ *    - REST /api/ui/*                  ：後台內部管理 API (登入狀態、日誌、聯絡人、QR 碼登入控制)
+ * ============================================================================
+ */
+
 import http, { type IncomingMessage, type ServerResponse } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
@@ -18,14 +38,18 @@ import { BusinessQrLogin } from './qr-login.js';
 import { healthResponse, parseRequestId, RequestDeduplicator, requestFingerprint, sendResponse, statusResponse, type ApiSendResponse } from './api-v1.js';
 import { parseImageMultipart } from './multipart.js';
 
+/**
+ * 閘道伺服器啟動選項介面
+ */
 export interface GatewayOptions {
-  dataDir?: string;
-  lineRequest?: RequestFn;
-  qrLogin?: BusinessQrLogin;
-  supervisor?: SupervisorRequest;
-  ingressTrust?: typeof trustedIngress;
-  sessionCheckDelayMs?: () => number;
+  dataDir?: string;                          // 自訂資料目錄
+  lineRequest?: RequestFn;                   // 自訂 LINE HTTP 請求器 (供測試 Mock)
+  qrLogin?: BusinessQrLogin;                 // 自訂 QR 登入實例
+  supervisor?: SupervisorRequest;            // 自訂 Supervisor 通訊器
+  ingressTrust?: typeof trustedIngress;      // 自訂 Ingress 信任校驗函式
+  sessionCheckDelayMs?: () => number;        // 自訂會話檢查延遲函式
 }
+
 
 export async function createGateway(options: GatewayOptions = {}) {
 const dataDir = options.dataDir ?? DATA_DIR;
@@ -299,8 +323,10 @@ const handleUi = async (req: IncomingMessage, res: ServerResponse) => {
     }
     if (req.method === 'GET' && path === '/api/aliases') return json(res, 200, { aliases: contacts.getAliases() });
     if (req.method === 'PUT' && path === '/api/aliases') {
-      const body = await bodyJson(req); await contacts.setAlias(String(body.alias ?? ''), String(body.chatId ?? ''));
-      logger.add('ALIAS_SET', 'SUCCESS', String(body.alias ?? '')); return json(res, 200, { aliases: contacts.getAliases() });
+      const body = await bodyJson(req);
+      const alias = String(body.alias ?? '').trim().toLowerCase();
+      await contacts.setAlias(alias, String(body.chatId ?? ''));
+      logger.add('ALIAS_SET', 'SUCCESS', alias); return json(res, 200, { aliases: contacts.getAliases() });
     }
     if (req.method === 'DELETE' && path.startsWith('/api/aliases/')) {
       const alias = decodeURIComponent(path.slice('/api/aliases/'.length)); await contacts.deleteAlias(alias); logger.add('ALIAS_DELETE', 'SUCCESS', alias); return json(res, 200, { aliases: contacts.getAliases() });

@@ -59,7 +59,7 @@ test('QR completion imports credentials atomically into SessionManager', async (
     const manager = new SessionManager(dir); await manager.load(); await manager.importCredentials(credentials);
     assert.equal(manager.getStatus().state, 'VALIDATING');
     assert.equal(manager.getCredentials()?.botId, credentials.botId);
-    assert.equal((await stat(join(dir, 'secrets', 'line-session.json'))).mode & 0o777, 0o600);
+    if (process.platform !== 'win32') assert.equal((await stat(join(dir, 'secrets', 'line-session.json'))).mode & 0o777, 0o600);
   } finally { await rm(dir, { recursive: true, force: true }); }
 });
 

@@ -1,0 +1,60 @@
+# ==============================================================================
+# GitHub Actions 工作流程：自動部署說明文件至 GitHub Pages
+# 適用專案：LINE OA Home Assistant Add-on
+# ==============================================================================
+
+name: 部署說明文件至 GitHub Pages
+
+# 觸發時機 (Triggers)
+on:
+  # 當推送 (push) 到 main 分支，且 docs/ 目錄或此 workflow 檔案有變動時自動執行
+  push:
+    branches:
+      - main
+    paths:
+      - 'docs/**'
+      - '.github/workflows/deploy-pages.yml'
+  # 允許使用者在 GitHub Actions 介面手動按鈕觸發 (手動部署)
+  workflow_dispatch:
+
+# 權限設定 (Permissions)：GitHub Pages 部署所需之最小權限
+permissions:
+  contents: read      # 讀取儲存庫程式碼與文件
+  pages: write         # 寫入並發布內容至 GitHub Pages
+  id-token: write      # 用於 GitHub OpenID Connect (OIDC) 驗證身份
+
+# 確保同一時間只有一個部署作業在執行，避免並行衝突
+concurrency:
+  group: 'pages'
+  cancel-in-progress: false
+
+jobs:
+  # ----------------------------------------------------------------------------
+  # 部署作業 (Deploy Job)
+  # ----------------------------------------------------------------------------
+  deploy:
+    environment:
+      # 指定 GitHub Pages 環境名稱與產生的站點網址
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      # 步驟一：簽出儲存庫程式碼
+      - name: 簽出專案原始碼 (Checkout)
+        uses: actions/checkout@v4
+
+      # 步驟二：設定 GitHub Pages 環境與中繼資料
+      - name: 設定 GitHub Pages (Configure Pages)
+        uses: actions/configure-pages@v4
+
+      # 步驟三：打包 docs 目錄為 Pages 工件 (Artifact)
+      - name: 打包文件產物 (Upload Pages Artifact)
+        uses: actions/upload-pages-artifact@v3
+        with:
+          # 指定發布的來源資料夾，此處為存放說明的 docs 目錄
+          path: './docs'
+
+      # 步驟四：發布至 GitHub Pages 伺服器
+      - name: 發布至 GitHub Pages (Deploy to Pages)
+        id: deployment
+        uses: actions/deploy-pages@v4

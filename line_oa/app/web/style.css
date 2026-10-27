@@ -1,23 +1,329 @@
-:root{color-scheme:dark;--bg:#0a1110;--card:#13201d;--line:#294039;--text:#edf7f3;--muted:#9db2aa;--green:#36d47f;--danger:#ff6b6b;--amber:#f4c56b}
-*{box-sizing:border-box}
-[hidden]{display:none!important}
-body{margin:0;background:radial-gradient(circle at 80% 0,#17382c 0,transparent 35%),var(--bg);color:var(--text);font:15px/1.55 system-ui,-apple-system,"Noto Sans TC",sans-serif}
-main{max-width:1050px;margin:auto;padding:28px 18px 48px}
-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
-h1{font-size:clamp(28px,5vw,46px);margin:0;letter-spacing:-.03em}h2{margin-top:0}h3{margin-bottom:6px}
-.notice{margin:0 0 20px;border:1px solid #765f2f;background:#2b2618;color:#f7deb0;border-radius:12px;padding:12px 15px}.notice strong{color:var(--amber)}
-.badge{border:1px solid var(--line);padding:8px 14px;border-radius:999px}.badge.ok{background:#123d29;color:#77f0ae}.badge.bad{background:#472324;color:#ffaaaa}
-.card{background:rgba(19,32,29,.94);border:1px solid var(--line);border-radius:16px;padding:20px;box-shadow:0 12px 35px #0004}.login{max-width:420px;margin:8vh auto}
-.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:14px}.metrics span{display:block;color:var(--muted);font-size:13px}.metrics strong{display:block;font-size:25px;margin-top:6px}
-nav{display:flex;gap:8px;overflow:auto;margin-bottom:18px;padding-bottom:4px}
-button,input,select,textarea{font:inherit}button{border:0;border-radius:10px;background:var(--green);color:#052313;font-weight:700;padding:10px 15px;cursor:pointer}button.secondary,button.quiet{background:#233630;color:var(--text)}button:disabled{opacity:.55;cursor:not-allowed}nav button{white-space:nowrap;background:#172824;color:var(--muted)}nav button.active{color:#062315;background:var(--green)}nav .quiet{margin-left:auto}
-label{display:grid;gap:6px;margin:12px 0;color:var(--muted)}input,select,textarea{width:100%;background:#0d1715;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:11px}textarea{resize:vertical}code,pre{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}
-.tab{display:none}.tab.active{display:block}.row{display:flex;gap:8px}.row input{flex:1}.list{display:grid;gap:8px;margin-top:14px}.item{border:1px solid var(--line);border-radius:11px;padding:12px;display:flex;gap:10px;align-items:center;justify-content:space-between}.item small,.note{color:var(--muted)}
-.target-info{border:1px solid var(--line);background:#0e1916;border-radius:12px;padding:14px;margin:12px 0}.target-info pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#08100e;padding:10px;border-radius:8px;color:#b9dfd0}
-.error{color:var(--danger)}.success{color:var(--green)}dl{display:grid;grid-template-columns:minmax(130px,200px) 1fr;gap:10px;margin:0}dt{color:var(--muted)}dd{margin:0;overflow-wrap:anywhere}.confirm{display:flex;grid-template-columns:auto 1fr;align-items:start}.confirm input{width:auto;margin-top:5px}hr{border:0;border-top:1px solid var(--line);margin:24px 0}
-.qr-login{display:grid;grid-template-columns:auto 1fr;gap:22px;align-items:center;margin-top:18px;padding:18px;border:1px solid var(--line);border-radius:14px;background:#0d1715}.qr-frame{background:#fff;border-radius:12px;padding:12px;line-height:0}.qr-frame img{display:block;image-rendering:pixelated}.qr-pin{display:inline-block;margin:4px 0 10px;padding:7px 13px;border:1px solid var(--green);border-radius:9px;color:var(--green);font:700 28px/1.2 ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:.16em}details{margin-top:18px;color:var(--muted)}summary{cursor:pointer;color:var(--text)}
-.login-choices{display:grid;gap:8px;margin:12px 0}.login-choices button{text-align:left;width:100%}
-footer{text-align:center;color:var(--muted);font-size:13px;padding-top:26px}
-@media(max-width:720px){.grid{grid-template-columns:1fr 1fr}.row{flex-wrap:wrap}.row input{flex-basis:100%}dl{grid-template-columns:1fr}dd{margin-bottom:7px}header{align-items:flex-start}.badge{margin-top:5px}.qr-login{grid-template-columns:1fr}.qr-frame{width:max-content}}
+/**
+ * ============================================================================
+ * 檔案名稱：style.css
+ * 檔案用途：LINE OA Add-on Ingress Web UI 樣式表
+ * 
+ * 設計風格與規範：
+ * 1. 現代暗色系 (Modern Dark Mode)：以墨綠深色底 (--bg: #0a1110) 搭配 LINE 品牌綠 (--green: #36d47f)。
+ * 2. 玻璃擬態與微漸層：主體採用放射漸層與細邊框卡片，營造精緻專業的儀表板視覺。
+ * 3. 響應式佈局：支援手機直立螢幕 (max-width: 720px) 雙欄與單欄自適應折疊。
+ * ============================================================================
+ */
 
-.contact-help{padding-left:24px;line-height:1.8}.contact-help li{margin:8px 0}#logList .item>div{min-width:0;width:100%}#logList pre{white-space:pre-wrap;overflow-wrap:anywhere;color:var(--text);background:#08100e;padding:14px;border-radius:8px;max-height:480px;overflow:auto;font:13px/1.6 ui-monospace,SFMono-Regular,Consolas,monospace}#qrLoginMessage,#sendResult,#imageResult,#loginError{white-space:pre-wrap;overflow-wrap:anywhere}#qrLoginMessage{max-height:360px;overflow:auto}
+/* 核心設計變數 (Design Tokens) */
+:root {
+  color-scheme: dark;
+  --bg: #0a1110;       /* 頁面主背景色 */
+  --card: #13201d;     /* 卡片底色 */
+  --line: #294039;     /* 邊框線條色 */
+  --text: #edf7f3;     /* 主要文字白綠色 */
+  --muted: #9db2aa;    /* 次要提示文字色 */
+  --green: #36d47f;    /* LINE 亮綠重點色 */
+  --danger: #ff6b6b;   /* 錯誤紅色 */
+  --amber: #f4c56b;    /* 警告琥珀色 */
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+
+/* 頁面整體底圖與字型設定 */
+body {
+  margin: 0;
+  background: radial-gradient(circle at 80% 0, #17382c 0, transparent 35%), var(--bg);
+  color: var(--text);
+  font: 15px/1.55 system-ui, -apple-system, "Noto Sans TC", sans-serif;
+}
+
+main {
+  max-width: 1050px;
+  margin: auto;
+  padding: 28px 18px 48px;
+}
+
+/* 標頭與狀態徽章 */
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+h1 {
+  font-size: clamp(28px, 5vw, 46px);
+  margin: 0;
+  letter-spacing: -.03em;
+}
+
+h2 { margin-top: 0; }
+h3 { margin-bottom: 6px; }
+
+/* 非官方安全警示告示方塊 */
+.notice {
+  margin: 0 0 20px;
+  border: 1px solid #765f2f;
+  background: #2b2618;
+  color: #f7deb0;
+  border-radius: 12px;
+  padding: 12px 15px;
+}
+.notice strong { color: var(--amber); }
+
+/* 狀態徽章 (Badge) */
+.badge {
+  border: 1px solid var(--line);
+  padding: 8px 14px;
+  border-radius: 999px;
+}
+.badge.ok { background: #123d29; color: #77f0ae; }
+.badge.bad { background: #472324; color: #ffaaaa; }
+
+/* 通用卡片容器 (Card) */
+.card {
+  background: rgba(19, 32, 29, .94);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 12px 35px #0004;
+}
+
+.login {
+  max-width: 420px;
+  margin: 8vh auto;
+}
+
+/* 運行指標網格 (4 欄配置) */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 14px;
+}
+.metrics span {
+  display: block;
+  color: var(--muted);
+  font-size: 13px;
+}
+.metrics strong {
+  display: block;
+  font-size: 25px;
+  margin-top: 6px;
+}
+
+/* 分頁導覽列 (Nav) */
+nav {
+  display: flex;
+  gap: 8px;
+  overflow: auto;
+  margin-bottom: 18px;
+  padding-bottom: 4px;
+}
+
+button, input, select, textarea { font: inherit; }
+
+button {
+  border: 0;
+  border-radius: 10px;
+  background: var(--green);
+  color: #052313;
+  font-weight: 700;
+  padding: 10px 15px;
+  cursor: pointer;
+  transition: opacity .15s ease;
+}
+
+button.secondary, button.quiet {
+  background: #233630;
+  color: var(--text);
+}
+
+button:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+}
+
+nav button {
+  white-space: nowrap;
+  background: #172824;
+  color: var(--muted);
+}
+
+nav button.active {
+  color: #062315;
+  background: var(--green);
+}
+
+nav .quiet { margin-left: auto; }
+
+/* 表單控制項 */
+label {
+  display: grid;
+  gap: 6px;
+  margin: 12px 0;
+  color: var(--muted);
+}
+
+input, select, textarea {
+  width: 100%;
+  background: #0d1715;
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 11px;
+}
+
+textarea { resize: vertical; }
+code, pre { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+
+/* 分頁切換與橫向排版 */
+.tab { display: none; }
+.tab.active { display: block; }
+.row { display: flex; gap: 8px; }
+.row input { flex: 1; }
+
+.list {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.item {
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  padding: 12px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.item small, .note { color: var(--muted); }
+
+/* HA YAML 範例方塊 */
+.target-info {
+  border: 1px solid var(--line);
+  background: #0e1916;
+  border-radius: 12px;
+  padding: 14px;
+  margin: 12px 0;
+}
+
+.target-info pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: #08100e;
+  padding: 10px;
+  border-radius: 8px;
+  color: #b9dfd0;
+}
+
+.error { color: var(--danger); }
+.success { color: var(--green); }
+
+/* 定義列表 (dl) 排版 */
+dl {
+  display: grid;
+  grid-template-columns: minmax(130px, 200px) 1fr;
+  gap: 10px;
+  margin: 0;
+}
+dt { color: var(--muted); }
+dd { margin: 0; overflow-wrap: anywhere; }
+
+.confirm {
+  display: flex;
+  grid-template-columns: auto 1fr;
+  align-items: start;
+}
+.confirm input { width: auto; margin-top: 5px; }
+
+hr {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: 24px 0;
+}
+
+/* QR Code 登入卡片與 PIN 碼視覺 */
+.qr-login {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 22px;
+  align-items: center;
+  margin-top: 18px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #0d1715;
+}
+
+.qr-frame {
+  background: #fff;
+  border-radius: 12px;
+  padding: 12px;
+  line-height: 0;
+}
+
+.qr-frame img {
+  display: block;
+  image-rendering: pixelated;
+}
+
+.qr-pin {
+  display: inline-block;
+  margin: 4px 0 10px;
+  padding: 7px 13px;
+  border: 1px solid var(--green);
+  border-radius: 99px;
+  color: var(--green);
+  font: 700 28px/1.2 ui-monospace, SFMono-Regular, Consolas, monospace;
+  letter-spacing: .16em;
+}
+
+details { margin-top: 18px; color: var(--muted); }
+summary { cursor: pointer; color: var(--text); }
+
+.login-choices {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0;
+}
+.login-choices button { text-align: left; width: 100%; }
+
+footer {
+  text-align: center;
+  color: var(--muted);
+  font-size: 13px;
+  padding-top: 26px;
+}
+
+/* 響應式佈局斷點 (手機螢幕適配) */
+@media (max-width: 720px) {
+  .grid { grid-template-columns: 1fr 1fr; }
+  .row { flex-wrap: wrap; }
+  .row input { flex-basis: 100%; }
+  dl { grid-template-columns: 1fr; }
+  dd { margin-bottom: 7px; }
+  header { align-items: flex-start; }
+  .badge { margin-top: 5px; }
+  .qr-login { grid-template-columns: 1fr; }
+  .qr-frame { width: max-content; }
+}
+
+.contact-help { padding-left: 24px; line-height: 1.8; }
+.contact-help li { margin: 8px 0; }
+#logList .item > div { min-width: 0; width: 100%; }
+#logList pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--text);
+  background: #08100e;
+  padding: 14px;
+  border-radius: 8px;
+  max-height: 480px;
+  overflow: auto;
+  font: 13px/1.6 ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+#qrLoginMessage, #sendResult, #imageResult, #loginError {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+#qrLoginMessage { max-height: 360px; overflow: auto; }

@@ -1,3 +1,19 @@
+/**
+ * ============================================================================
+ * 模組名稱：qr-login.ts
+ * 模組用途：實作 LINE 官方帳號管理後台 (Business ID / access.line.me) 的 QR Code / PIN 碼無密碼登入流程
+ * 
+ * 核心流程與狀態機 (State Machine)：
+ * 1. idle -> starting：初始化會話與 Cookie Jar，向 chat.line.biz 發起初始導航。
+ * 2. 解析表單 (extractLineLoginForm)：提取 Business 登入表單的 action 與 _csrf。
+ * 3. 請求授權 (qr)：向 access.line.me 請求二維條碼圖片與登入 Session。
+ * 4. 驗證碼等待 (pin)：手機 LINE 掃碼後，呈現 4 位數驗證碼，等待使用者於手機端確認輸入。
+ * 5. 授權交換 (finalizing)：捕獲 OAuth2 重導向回調，取得登入身分 Cookie。
+ * 6. 帳號選擇 (selecting)：若該 LINE 帳號管理多個官方帳號，列出供使用者在 Web UI 選擇目標。
+ * 7. 完成 (ok)：儲存憑證至 line-session.json，標記 Session 為 CONNECTED。
+ * ============================================================================
+ */
+
 import { diagnosticText, networkDetails } from './diagnostics.js';
 import { MemoryCookieJar } from './cookie-jar.js';
 export { MemoryCookieJar } from './cookie-jar.js';
@@ -6,27 +22,32 @@ import type { SessionCredentials } from './types.js';
 import { SessionManager } from './session.js';
 import { LINE_USER_AGENT } from './line-browser.js';
 
+// 登入流程允許跳轉之主機白名單
 const ALLOWED_HOSTS = new Set(['chat.line.biz', 'account.line.biz', 'access.line.me']);
 const START_URL = 'https://chat.line.biz/';
 const ACCESS_ORIGIN = 'https://access.line.me';
-const QR_LIFETIME_MS = 4 * 60_000;
-const TERMINAL_STATE_MS = 60_000;
-const MAX_LOGIN_RESPONSE_BYTES = 2 * 1024 * 1024;
-// LINE Business ID serves a reduced non-interactive page to generic HTTP clients.
-// The shared desktop web identity is also used after login; no browser is started.
+const QR_LIFETIME_MS = 4 * 60_000;         // QR Code 效期 4 分鐘
+const TERMINAL_STATE_MS = 60_000;         // 終結狀態停留時間 60 秒
+const MAX_LOGIN_RESPONSE_BYTES = 2 * 1024 * 1024; // 登入回應大小上限 2 MiB
 
+/** QR Code 登入狀態列舉 */
 export type QrLoginStatus = 'idle' | 'starting' | 'qr' | 'pin' | 'finalizing' | 'selecting' | 'ok' | 'error';
+
+/** 官方帳號選擇項目 */
 export interface PublicLoginChoice { id: string; label: string }
+
+/** 對前端 UI 呈現之 QR Code 登入狀態物件 */
 export interface PublicQrLoginState {
-  status: QrLoginStatus;
-  hasQr: boolean;
-  pin?: string;
-  message?: string;
-  choices?: PublicLoginChoice[];
-  expiresAt?: string;
-  error_name?: string;
-  details?: string;
+  status: QrLoginStatus;                   // 當前登入步驟狀態
+  hasQr: boolean;                          // 是否已有 QR Code 圖片可供渲染
+  pin?: string;                            // 需於手機輸入的 4 位數 PIN 碼
+  message?: string;                        // 提示訊息
+  choices?: PublicLoginChoice[];           // 帳號選項清單
+  expiresAt?: string;                      // QR Code 過期時間 ISO 字串
+  error_name?: string;                     // 錯誤代碼
+  details?: string;                        // 遮蔽後的除錯細節
 }
+
 
 
 function decodeHtml(value: string): string {

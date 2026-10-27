@@ -148,6 +148,21 @@ python3 scripts/container-smoke.py
 
 [完整操作](DOCS.md) · [安裝](docs/installation.md) · [API 相容性](docs/api-compatibility.md) · [安全配對](docs/secure-pairing.md) · [探索](docs/discovery.md) · [安全邊界](docs/security.md) · [測試範圍](docs/verification.md) · [原始碼來源](docs/source-audit.md) · [貢獻指南](CONTRIBUTING.md)
 
+## 自動部署說明文件至 GitHub Pages
+
+本專案已配置 GitHub Actions 自動發布工作流程（[`.github/workflows/deploy-pages.yml`](.github/workflows/deploy-pages.yml)），每當 `docs/` 文件更新並推送到 `main` 分支時，即可自動部署至 GitHub Pages：
+
+### 啟用與設定流程：
+1. **進入儲存庫設定**：在 GitHub 專案頁面點選 **Settings**。
+2. **開啟 Pages 設定**：在左側側邊欄選擇 **Pages**。
+3. **選擇建置來源 (Build and deployment)**：
+   - 將 **Source** 設為 **GitHub Actions**。
+4. **自動觸發部署**：
+   - 當您推送異動至 `main` 分支的 `docs/` 目錄時，GitHub Actions 會自動執行部署。
+   - 亦可在 GitHub **Actions** 頁籤中選擇 **「部署說明文件至 GitHub Pages」** 工作流程並點選 **Run workflow** 手動執行。
+5. **檢視線上文件**：部署完成後，文件首頁將發布至 `https://<你的GitHub帳號>.github.io/line-oa-ha-addon/`。
+
 ## 授權與商標
 
 專案程式碼採 [MIT License](LICENSE)。Node.js、Debian 及建置工具各依其原有授權；LINE、Home Assistant 及相關商標屬其各自權利人。本專案圖示為社群專案識別，不代表官方合作。
+

@@ -43,7 +43,7 @@ test('pairing rejects wrong secrets, instance, expiry, replay and concurrent exc
     assert.doesNotMatch(JSON.stringify(pairing.status()), new RegExp(key));
     const stored = await readFile(join(dir, 'secrets/api-key.json'), 'utf8');
     assert.equal(stored.includes(key), false);
-    assert.equal((await stat(join(dir, 'secrets/api-key.json'))).mode & 0o777, 0o600);
+    if (process.platform !== 'win32') assert.equal((await stat(join(dir, 'secrets/api-key.json'))).mode & 0o777, 0o600);
     const restarted = new AuthManager(dir, false); await restarted.load();
     assert.equal(restarted.validApiKey(`Bearer ${key}`), true);
     const again = new PairingManager(restarted, pairing.instanceId);
@@ -234,8 +234,10 @@ test('restart retains stable identity, session, aliases, and credential; corrupt
     assert.equal(two.auth.validApiKey(`Bearer ${paired.api_key}`), true);
     assert.deepEqual(two.sessions.getCredentials(), session);
     assert.ok(two.contacts.resolve('simon'));
-    for (const path of ['secrets', 'tmp']) assert.equal((await stat(join(dir, path))).mode & 0o777, 0o700);
-    assert.equal((await stat(join(dir, 'secrets/line-session.json'))).mode & 0o777, 0o600);
+    if (process.platform !== 'win32') {
+      for (const path of ['secrets', 'tmp']) assert.equal((await stat(join(dir, path))).mode & 0o777, 0o700);
+      assert.equal((await stat(join(dir, 'secrets/line-session.json'))).mode & 0o777, 0o600);
+    }
     await writeFile(join(dir, 'config.json'), '{bad');
     await assert.rejects(createGateway({ dataDir: dir }), /CONFIG_CORRUPT/);
   } finally { await two.stop(); await rm(dir, { recursive: true, force: true }); }
